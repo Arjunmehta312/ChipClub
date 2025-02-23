@@ -1,38 +1,32 @@
 import { Layout } from "../components/layout"
 import { Button, Input, Card, CardBody, CardHeader } from "@nextui-org/react"
 import { FaGoogle } from "react-icons/fa"
-import { useState } from "react"
 import { signIn } from "next-auth/react"
+import { useState } from "react"
+import { useRouter } from "next/router"
 
-export default function SignUp() {
+export default function Login() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [referralCode, setReferralCode] = useState("")
   const [error, setError] = useState("")
+  const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      const response = await fetch("/api/auth/signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, referralCode }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.message || "Something went wrong")
-      }
-
-      // Sign in after successful signup
-      await signIn("credentials", {
+      const result = await signIn("credentials", {
         email,
         password,
-        callbackUrl: "/dashboard",
+        redirect: false,
       })
+
+      if (result?.error) {
+        setError("Invalid credentials")
+      } else {
+        router.push("/dashboard")
+      }
     } catch (error) {
-      setError(error instanceof Error ? error.message : "An error occurred")
+      setError("An error occurred")
     }
   }
 
@@ -41,19 +35,12 @@ export default function SignUp() {
       <div className="container mx-auto px-4 py-16">
         <Card className="max-w-md mx-auto">
           <CardHeader className="flex flex-col gap-3">
-            <h1 className="text-2xl font-bold">Sign Up for ChipClub</h1>
-            <p className="text-sm text-gray-400">Join the exclusive poker community</p>
+            <h1 className="text-2xl font-bold">Login to ChipClub</h1>
+            <p className="text-sm text-gray-400">Welcome back to the community</p>
           </CardHeader>
           <CardBody>
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               {error && <p className="text-red-500 text-sm">{error}</p>}
-              <Input
-                label="Referral Code"
-                placeholder="Enter your referral code"
-                type="text"
-                value={referralCode}
-                onChange={(e) => setReferralCode(e.target.value)}
-              />
               <Input
                 label="Email"
                 placeholder="Enter your email"
@@ -63,13 +50,13 @@ export default function SignUp() {
               />
               <Input
                 label="Password"
-                placeholder="Create a password"
+                placeholder="Enter your password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
               <Button type="submit" color="primary">
-                Sign Up
+                Login
               </Button>
               <div className="relative flex py-5 items-center">
                 <div className="flex-grow border-t border-gray-400"></div>
@@ -82,7 +69,7 @@ export default function SignUp() {
                 variant="flat"
                 onClick={() => signIn("google")}
               >
-                Sign up with Google
+                Sign in with Google
               </Button>
             </form>
           </CardBody>
@@ -90,5 +77,4 @@ export default function SignUp() {
       </div>
     </Layout>
   )
-}
-
+} 

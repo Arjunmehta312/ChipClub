@@ -1,13 +1,39 @@
 import { Layout } from "../components/layout"
 import { Card, CardBody, Tab, Tabs } from "@nextui-org/react"
 import { FaSearch, FaGamepad, FaUser, FaWallet } from "react-icons/fa"
+import { withAuth } from "../components/protected-route"
+import { useState } from "react"
+import { GameList } from "../components/game-list"
+import { UserProfile } from "../components/user-profile"
+import { MyGames } from "../components/my-games"
 
-export default function Dashboard() {
+function Dashboard() {
+  const [selectedTab, setSelectedTab] = useState("find-games")
+
+  const renderTabContent = () => {
+    switch (selectedTab) {
+      case "find-games":
+        return <GameList />
+      case "my-games":
+        return <MyGames />
+      case "profile":
+        return <UserProfile />
+      default:
+        return null
+    }
+  }
+
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-2xl font-bold mb-6">Welcome to ChipClub</h1>
-        <Tabs aria-label="Dashboard tabs" color="primary" variant="underlined">
+        <Tabs 
+          aria-label="Dashboard tabs" 
+          color="primary" 
+          variant="underlined"
+          selectedKey={selectedTab}
+          onSelectionChange={(key) => setSelectedTab(key as string)}
+        >
           <Tab
             key="find-games"
             title={
@@ -18,10 +44,7 @@ export default function Dashboard() {
             }
           >
             <Card>
-              <CardBody>
-                <h2 className="text-xl font-semibold mb-4">Available Games</h2>
-                {/* Add game list component here */}
-              </CardBody>
+              <CardBody>{renderTabContent()}</CardBody>
             </Card>
           </Tab>
           <Tab
@@ -34,10 +57,7 @@ export default function Dashboard() {
             }
           >
             <Card>
-              <CardBody>
-                <h2 className="text-xl font-semibold mb-4">Your Games</h2>
-                {/* Add user's games component here */}
-              </CardBody>
+              <CardBody>{renderTabContent()}</CardBody>
             </Card>
           </Tab>
           <Tab
@@ -50,26 +70,7 @@ export default function Dashboard() {
             }
           >
             <Card>
-              <CardBody>
-                <h2 className="text-xl font-semibold mb-4">Your Profile</h2>
-                {/* Add profile component here */}
-              </CardBody>
-            </Card>
-          </Tab>
-          <Tab
-            key="wallet"
-            title={
-              <div className="flex items-center space-x-2">
-                <FaWallet />
-                <span>Wallet & Payments</span>
-              </div>
-            }
-          >
-            <Card>
-              <CardBody>
-                <h2 className="text-xl font-semibold mb-4">Your Wallet</h2>
-                {/* Add wallet component here */}
-              </CardBody>
+              <CardBody>{renderTabContent()}</CardBody>
             </Card>
           </Tab>
         </Tabs>
@@ -77,4 +78,6 @@ export default function Dashboard() {
     </Layout>
   )
 }
+
+export default withAuth(Dashboard)
 

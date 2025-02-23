@@ -1,0 +1,103 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  referralCode  String    @unique @default(cuid())
+  referredBy    String?
+  rating        Float     @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  hostedGames   Game[]    @relation("HostedGames")
+  joinedGames   GamePlayer[]
+  reviews       Review[]
+  accounts      Account[]
+  sessions      Session[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Game {
+  id          String   @id @default(cuid())
+  hostId      String
+  gameType    String
+  buyIn       Int
+  maxPlayers  Int
+  locality    String
+  startTime   DateTime
+  status      String   @default("PENDING") // PENDING, ACTIVE, COMPLETED, CANCELLED
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  host        User        @relation("HostedGames", fields: [hostId], references: [id])
+  players     GamePlayer[]
+  reviews     Review[]
+}
+
+model GamePlayer {
+  id        String   @id @default(cuid())
+  gameId    String
+  playerId  String
+  status    String   @default("PENDING") // PENDING, CONFIRMED, REJECTED
+  tokenPaid Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  game      Game     @relation(fields: [gameId], references: [id])
+  player    User     @relation(fields: [playerId], references: [id])
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  gameId    String
+  reviewerId String
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  game      Game     @relation(fields: [gameId], references: [id])
+  reviewer  User     @relation(fields: [reviewerId], references: [id])
+} 
