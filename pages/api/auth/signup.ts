@@ -29,7 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     })
 
     if (existingUser) {
-      return res.status(400).json({ message: "User already exists" })
+      return res.status(400).json({ message: "Email already registered" })
     }
 
     // Create new user
@@ -38,13 +38,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       data: {
         email,
         password: hashedPassword,
-        referredBy: referrer.id,
+        invitedById: referrer.id,
       },
     })
 
-    res.status(201).json({ message: "User created successfully" })
+    return res.status(201).json({
+      message: "User created successfully",
+      user: {
+        id: user.id,
+        email: user.email,
+        referralCode: user.referralCode,
+      },
+    })
   } catch (error) {
     console.error("Signup error:", error)
-    res.status(500).json({ message: "Something went wrong" })
+    return res.status(500).json({ message: "Internal server error" })
   }
 } 

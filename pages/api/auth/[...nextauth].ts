@@ -67,52 +67,67 @@ export const authOptions: NextAuthOptions = {
     strategy: "jwt",
   },
   callbacks: {
-    async signIn({ user, account, profile }) {
+    async signIn({ user, account }) {
       try {
-        if (account?.type === "credentials") {
-          return true // Skip referral check for credentials
+        if (account?.provider === "google") {
+          // Check if user exists
+          const existingUser = await prisma.user.findUnique({
+            where: { email: user.email! },
+          })
+
+          if (!existingUser) {
+            // Get referral code from state parameter
+            const referralCode = account.state?.split('referral:')[1]
+            
+            if (!referralCode) {
+              return '/signup?error=NoReferralCode'
+            }
+
+            // Verify referral code
+            const referrer = await prisma.user.findFirst({
+              where: { referralCode },
+            })
+
+            if (!referrer) {
+              return '/signup?error=InvalidReferralCode'
+            }
+
+            // Create new user with referral and generate a new referral code
+            await prisma.user.create({
+              data: {
+                email: user.email!,
+                name: user.name,
+                image: user.image,
+                invitedById: referrer.id,
+                referralCode: `${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+              },
+            })
+          }
         }
-
-        const existingUser = await prisma.user.findUnique({
-          where: { email: user.email! },
-        })
-
-        if (existingUser) {
-          return true
-        }
-
-        // For new users, require a referral code
-        const extendedProfile = profile as ExtendedProfile
-        const referralCode = extendedProfile?.referralCode
-        if (!referralCode) {
-          console.error("No referral code provided")
-          return false
-        }
-
-        const referrer = await prisma.user.findFirst({
-          where: { referralCode },
-        })
-
-        if (!referrer) {
-          console.error("Invalid referral code")
-          return false
-        }
-
         return true
       } catch (error) {
         console.error("Error in signIn callback:", error)
-        return false
+        return '/signup?error=SignUpFailed'
       }
+    },
+    async redirect({ url, baseUrl }) {
+      // Handle custom callback
+      if (url.startsWith('/api/auth/google-callback')) {
+        const referralCode = typeof window !== 'undefined' ? 
+          localStorage.getItem('referralCode') : null
+        return `${baseUrl}/api/auth/google-callback?referralCode=${referralCode}`
+      }
+      return url.startsWith(baseUrl) ? url : baseUrl
     },
     async jwt({ token, user }) {
       if (user) {
-        token.sub = user.id
+        token.id = user.id
       }
       return token
     },
     async session({ session, token }) {
       if (session.user) {
-        session.user.id = token.sub as string
+        session.user.id = token.id as string
       }
       return session
     },
