@@ -6,28 +6,28 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession()
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <Navbar isBordered>
+    <div className="min-h-screen bg-background">
+      <Navbar isBordered className="bg-background">
         <NavbarBrand>
-          <Link href="/" color="foreground">
-            <p className="font-bold text-inherit">ChipClub</p>
+          <Link href="/" className="text-foreground">
+            <p className="font-bold">ChipClub</p>
           </Link>
         </NavbarBrand>
         <NavbarContent className="hidden sm:flex gap-4" justify="center">
           {session && (
             <>
               <NavbarItem>
-                <Link color="foreground" href="/dashboard">
+                <Link className="text-foreground" href="/dashboard">
                   Find Games
                 </Link>
               </NavbarItem>
               <NavbarItem>
-                <Link color="foreground" href="/dashboard">
+                <Link className="text-foreground" href="/dashboard">
                   My Games
                 </Link>
               </NavbarItem>
               <NavbarItem>
-                <Link color="foreground" href="/dashboard">
+                <Link className="text-foreground" href="/dashboard">
                   Profile
                 </Link>
               </NavbarItem>
@@ -57,7 +57,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           )}
         </NavbarContent>
       </Navbar>
-      <main>{children}</main>
+      <main className="text-foreground">{children}</main>
     </div>
   )
 }
