@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardBody, Button, Input } from "@nextui-org/react"
+import { useRouter } from "next/router"
 
 interface Game {
   id: string
@@ -14,6 +15,9 @@ interface Game {
 
 export function GameList() {
   const [games, setGames] = useState<Game[]>([])
+  const [joiningGame, setJoiningGame] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
   const [filters, setFilters] = useState({
     gameType: "",
     buyIn: "",
@@ -37,24 +41,41 @@ export function GameList() {
 
   const handleJoinGame = async (gameId: string) => {
     try {
+      setJoiningGame(gameId)
+      setError(null)
+
       const response = await fetch("/api/games/join", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ gameId }),
       })
 
+      const data = await response.json()
+
       if (!response.ok) {
-        throw new Error("Failed to join game")
+        throw new Error(data.message || "Failed to join game")
       }
 
-      fetchGames() // Refresh the list
+      // On successful join, redirect to game room
+      router.push(`/game-room/${gameId}`)
     } catch (error) {
+      setError(error instanceof Error ? error.message : "Failed to join game")
       console.error("Error joining game:", error)
+    } finally {
+      setJoiningGame(null)
     }
   }
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="p-4 mb-4 text-sm text-red-700 bg-red-100 rounded-lg">
+          {error}
+        </div>
+      )}
+
       {/* Filters */}
       <div className="grid grid-cols-3 gap-4">
         {/* Add filter inputs */}
@@ -76,9 +97,10 @@ export function GameList() {
               <Button
                 color="primary"
                 onClick={() => handleJoinGame(game.id)}
-                disabled={game.players.length >= game.maxPlayers}
+                isLoading={joiningGame === game.id}
+                isDisabled={joiningGame !== null || game.players.length >= game.maxPlayers}
               >
-                Join Game
+                {joiningGame === game.id ? "Joining..." : "Join Game"}
               </Button>
             </div>
           </CardBody>
@@ -86,4 +108,4 @@ export function GameList() {
       ))}
     </div>
   )
-} 
+}

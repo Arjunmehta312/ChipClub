@@ -1,4 +1,5 @@
-import { getSession } from "next-auth/react"
+import { getServerSession } from "next-auth"
+import { authOptions } from "../auth/[...nextauth]"
 import { prisma } from "../../../lib/prisma"
 import type { NextApiRequest, NextApiResponse } from "next"
 
@@ -8,12 +9,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const session = await getSession({ req })
+    const session = await getServerSession(req, res, authOptions)
+    
     if (!session?.user?.id) {
-      return res.status(401).json({ message: "Unauthorized" })
+      return res.status(401).json({ message: "Please login to join games" })
     }
 
     const { gameId } = req.body
+
+    if (!gameId) {
+      return res.status(400).json({ message: "Game ID is required" })
+    }
 
     // Transaction to ensure atomicity
     const result = await prisma.$transaction(async (tx) => {
@@ -43,7 +49,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         throw new Error("Already joined this game")
       }
 
-      // Create GamePlayer entry
       const gamePlayer = await tx.gamePlayer.create({
         data: {
           gameId,
@@ -52,7 +57,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       })
 
-      // Connect player to game
       const updatedGame = await tx.game.update({
         where: { id: gameId },
         data: {
