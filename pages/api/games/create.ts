@@ -1,4 +1,5 @@
-import { getSession } from "next-auth/react"
+import { getServerSession } from "next-auth"
+import { authOptions } from "../auth/[...nextauth]"
 import { prisma } from "../../../lib/prisma"
 import type { NextApiRequest, NextApiResponse } from "next"
 
@@ -8,12 +9,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const session = await getSession({ req })
+    const session = await getServerSession(req, res, authOptions)
+    
     if (!session?.user?.id) {
-      return res.status(401).json({ message: "Unauthorized" })
+      return res.status(401).json({ message: "Please log in to create a game" })
     }
 
-    const { title, gameType, buyIn, maxPlayers, location, startTime } = req.body
+    const { title, gameType, buyIn, maxPlayers, location, startTime, description } = req.body
+
+    if (!title || !gameType || !buyIn || !maxPlayers || !location || !startTime) {
+      return res.status(400).json({ message: "Missing required fields" })
+    }
 
     const game = await prisma.game.create({
       data: {
@@ -23,6 +29,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         maxPlayers: parseInt(maxPlayers),
         location,
         startTime: new Date(startTime),
+        description: description || null,
+        status: "SCHEDULED",
         hostId: session.user.id,
       },
     })
@@ -30,6 +38,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(201).json(game)
   } catch (error) {
     console.error("Create game error:", error)
-    return res.status(500).json({ message: "Internal server error" })
+    return res.status(500).json({ 
+      message: error instanceof Error ? error.message : "Internal server error" 
+    })
   }
 } 

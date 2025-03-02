@@ -15,32 +15,65 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { gameId } = req.body
 
-    const game = await prisma.game.findUnique({
-      where: { id: gameId },
-      include: { players: true },
-    })
-
-    if (!game) {
-      return res.status(404).json({ message: "Game not found" })
-    }
-
-    if (game.players.length >= game.maxPlayers) {
-      return res.status(400).json({ message: "Game is full" })
-    }
-
-    const updatedGame = await prisma.game.update({
-      where: { id: gameId },
-      data: {
-        players: {
-          connect: { id: session.user.id },
+    // Transaction to ensure atomicity
+    const result = await prisma.$transaction(async (tx) => {
+      const game = await tx.game.findUnique({
+        where: { id: gameId },
+        include: {
+          players: true,
+          gamePlayers: {
+            where: { playerId: session.user.id }
+          }
         },
-      },
-      include: { players: true },
+      })
+
+      if (!game) {
+        throw new Error("Game not found")
+      }
+
+      if (game.status !== "SCHEDULED") {
+        throw new Error("Game is not accepting players")
+      }
+
+      if (game.players.length >= game.maxPlayers) {
+        throw new Error("Game is full")
+      }
+
+      if (game.gamePlayers.length > 0) {
+        throw new Error("Already joined this game")
+      }
+
+      // Create GamePlayer entry
+      const gamePlayer = await tx.gamePlayer.create({
+        data: {
+          gameId,
+          playerId: session.user.id,
+          status: "PENDING"
+        }
+      })
+
+      // Connect player to game
+      const updatedGame = await tx.game.update({
+        where: { id: gameId },
+        data: {
+          players: {
+            connect: { id: session.user.id },
+          },
+        },
+        include: { 
+          players: true,
+          gamePlayers: true
+        },
+      })
+
+      return { game: updatedGame, gamePlayer }
     })
 
-    return res.status(200).json(updatedGame)
+    return res.status(200).json(result)
   } catch (error) {
     console.error("Join game error:", error)
-    return res.status(500).json({ message: "Internal server error" })
+    return res.status(400).json({ 
+      message: error instanceof Error ? error.message : "Failed to join game" 
+    })
   }
-} 
+}

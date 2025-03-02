@@ -1,26 +1,28 @@
-import type { AppProps } from 'next/app'
-import { NextUIProvider } from '@nextui-org/react'
+import { AppProps } from 'next/app'
 import { SessionProvider } from 'next-auth/react'
-import { useTheme } from 'next-themes'
+import { validateEnv } from '@/utils/env'
+import { NextUIProvider } from '@nextui-org/react'
+import { useEffect } from 'react'
+import { ThemeProvider as NextThemesProvider } from 'next-themes'
 import '../styles/globals.css'
 
-const theme = {
-  colors: {
-    background: '#ffffff',
-    foreground: '#11181C',
-    primary: {
-      foreground: '#ffffff',
-      DEFAULT: '#006FEE',
-    },
-  },
+if (process.env.NODE_ENV === 'production') {
+  validateEnv()
 }
 
 export default function App({ Component, pageProps: { session, ...pageProps } }: AppProps) {
+  useEffect(() => {
+    // Clear any stored referral codes on app load
+    localStorage.removeItem('referralCode')
+  }, [])
+
   return (
     <SessionProvider session={session}>
-      <NextUIProvider theme={theme}>
-        <Component {...pageProps} />
-      </NextUIProvider>
+      <NextThemesProvider defaultTheme="light" attribute="class">
+        <NextUIProvider>
+          <Component {...pageProps} />
+        </NextUIProvider>
+      </NextThemesProvider>
     </SessionProvider>
   )
 }

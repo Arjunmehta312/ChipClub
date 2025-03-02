@@ -1,14 +1,16 @@
 import { Layout } from "../components/layout"
-import { Card, CardBody, Tab, Tabs } from "@nextui-org/react"
+import { Card, CardBody, Tab, Tabs, Button, Modal, ModalContent, ModalHeader, ModalBody } from "@nextui-org/react"
 import { FaSearch, FaGamepad, FaUser, FaWallet } from "react-icons/fa"
 import { withAuth } from "../components/protected-route"
 import { useState } from "react"
 import { GameList } from "../components/game-list"
 import { UserProfile } from "../components/user-profile"
 import { MyGames } from "../components/my-games"
+import { HostGameForm } from "../components/host-game-form"
 
 function Dashboard() {
   const [selectedTab, setSelectedTab] = useState("find-games")
+  const [showHostForm, setShowHostForm] = useState(false)
 
   const renderTabContent = () => {
     switch (selectedTab) {
@@ -27,6 +29,14 @@ function Dashboard() {
     <Layout>
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-2xl font-bold mb-6">Welcome to ChipClub</h1>
+        <div className="flex justify-end mb-6">
+          <Button 
+            color="primary"
+            onPress={() => setShowHostForm(true)}
+          >
+            Host New Game
+          </Button>
+        </div>
         <Tabs 
           aria-label="Dashboard tabs" 
           color="primary" 
@@ -74,6 +84,20 @@ function Dashboard() {
             </Card>
           </Tab>
         </Tabs>
+        {showHostForm && (
+          <Modal
+            isOpen={showHostForm}
+            onClose={() => setShowHostForm(false)}
+            size="2xl"
+          >
+            <ModalContent>
+              <ModalHeader>Host a New Game</ModalHeader>
+              <ModalBody>
+                <HostGameForm />
+              </ModalBody>
+            </ModalContent>
+          </Modal>
+        )}
       </div>
     </Layout>
   )

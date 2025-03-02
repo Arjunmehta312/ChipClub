@@ -1,14 +1,9 @@
-import NextAuth, { NextAuthOptions, Profile } from "next-auth"
+import NextAuth, { NextAuthOptions } from "next-auth"
 import GoogleProvider from "next-auth/providers/google"
-import { PrismaAdapter } from "@auth/prisma-adapter"
-import { prisma } from "@/lib/prisma"
 import CredentialsProvider from "next-auth/providers/credentials"
+import { PrismaAdapter } from "@next-auth/prisma-adapter"
+import { prisma } from "@/lib/prisma"
 import { compare } from "bcryptjs"
-
-// Extend the Profile type to include referralCode
-interface ExtendedProfile extends Profile {
-  referralCode?: string
-}
 
 // Extend the Session type
 declare module "next-auth" {
@@ -23,26 +18,20 @@ declare module "next-auth" {
 }
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
   providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
     CredentialsProvider({
       name: "Credentials",
       credentials: {
         email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
-        referralCode: { label: "Referral Code", type: "text" },
+        password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          throw new Error("Invalid credentials")
+          throw new Error("Missing credentials")
         }
 
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
+          where: { email: credentials.email }
         })
 
         if (!user || !user.password) {
@@ -59,83 +48,84 @@ export const authOptions: NextAuthOptions = {
           id: user.id,
           email: user.email,
           name: user.name,
+          image: user.image
         }
-      },
+      }
+    }),
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
   ],
+  adapter: PrismaAdapter(prisma),
   session: {
     strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+  pages: {
+    signIn: '/pre-login',
+    error: '/pre-login',
   },
   callbacks: {
-    async signIn({ user, account }) {
-      try {
-        if (account?.provider === "google") {
-          // Check if user exists
-          const existingUser = await prisma.user.findUnique({
-            where: { email: user.email! },
-          })
-
-          if (!existingUser) {
-            // Get referral code from state parameter
-            const referralCode = account.state?.split('referral:')[1]
-            
-            if (!referralCode) {
-              return '/signup?error=NoReferralCode'
-            }
-
-            // Verify referral code
-            const referrer = await prisma.user.findFirst({
-              where: { referralCode },
-            })
-
-            if (!referrer) {
-              return '/signup?error=InvalidReferralCode'
-            }
-
-            // Create new user with referral and generate a new referral code
-            await prisma.user.create({
-              data: {
-                email: user.email!,
-                name: user.name,
-                image: user.image,
-                invitedById: referrer.id,
-                referralCode: `${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
-              },
-            })
-          }
-        }
-        return true
-      } catch (error) {
-        console.error("Error in signIn callback:", error)
-        return '/signup?error=SignUpFailed'
-      }
-    },
-    async redirect({ url, baseUrl }) {
-      // Handle custom callback
-      if (url.startsWith('/api/auth/google-callback')) {
-        const referralCode = typeof window !== 'undefined' ? 
-          localStorage.getItem('referralCode') : null
-        return `${baseUrl}/api/auth/google-callback?referralCode=${referralCode}`
-      }
-      return url.startsWith(baseUrl) ? url : baseUrl
-    },
-    async jwt({ token, user }) {
+    async jwt({ token, user, account }) {
       if (user) {
         token.id = user.id
+        token.email = user.email
+        token.name = user.name
+        token.picture = user.image
+      }
+      if (account?.provider === 'google') {
+        token.provider = 'google'
+        token.access_token = account.access_token
       }
       return token
     },
     async session({ session, token }) {
-      if (session.user) {
+      if (session?.user) {
         session.user.id = token.id as string
+        session.user.email = token.email as string
+        session.user.name = token.name as string
+        session.user.image = token.picture as string
       }
       return session
     },
-  },
-  pages: {
-    signIn: '/login',
-    error: '/auth/error',
-  },
+    async signIn({ user, account }) {
+      if (account?.provider === "credentials") {
+        return true
+      }
+
+      if (account?.provider === "google") {
+        try {
+          const existingUser = await prisma.user.findUnique({
+            where: { email: user.email! },
+          })
+
+          if (existingUser) {
+            return true
+          }
+
+          // For new users, redirect to our callback
+          return '/api/auth/google-callback'
+        } catch (error) {
+          console.error("Error in signIn callback:", error)
+          return false
+        }
+      }
+
+      return false
+    },
+    async redirect({ url, baseUrl }) {
+      // Always allow redirects to our custom callback
+      if (url.startsWith('/api/auth/google-callback')) {
+        return `${baseUrl}${url}`
+      }
+      // Allow redirects to the same host
+      if (url.startsWith(baseUrl)) {
+        return url
+      }
+      return baseUrl
+    }
+  }
 }
 
 export default NextAuth(authOptions) 

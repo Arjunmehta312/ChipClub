@@ -1,56 +1,73 @@
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/router'
 import { Layout } from "../components/layout"
-import { Button, Card, CardBody, CardHeader } from "@nextui-org/react"
-import { FaChessKing, FaShieldAlt, FaUserCheck } from "react-icons/fa"
+import { Button, Card, CardBody } from "@nextui-org/react"
 
 export default function Home() {
+  const { data: session } = useSession()
+  const router = useRouter()
+
+  const handleJoinClick = () => {
+    if (session) {
+      router.push('/dashboard')
+    } else {
+      router.push('/signup')
+    }
+  }
+
+  const handleFindGamesClick = () => {
+    if (session) {
+      router.push('/games')
+    } else {
+      router.push('/login')
+    }
+  }
+
   return (
     <Layout>
       <div className="container mx-auto px-4 py-16">
-        <div className="text-center mb-16">
-          <h1 className="text-4xl font-bold mb-4">Find Your Next Poker Game – Exclusive & Trusted</h1>
-          <p className="text-xl mb-8">Join the elite community of poker enthusiasts</p>
-          <div className="flex justify-center gap-4">
-            <Button color="primary" size="lg">
-              Sign Up with Referral
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-bold mb-4">
+            Welcome to ChipClub
+          </h1>
+          <p className="text-xl text-gray-600 mb-8">
+            The exclusive community for poker enthusiasts
+          </p>
+          <div className="flex gap-4 justify-center">
+            <Button 
+              size="lg" 
+              color="primary"
+              onPress={handleJoinClick}
+            >
+              {session ? 'Go to Dashboard' : 'Join with Referral'}
             </Button>
-            <Button color="secondary" size="lg">
-              Explore Games
+            <Button
+              size="lg"
+              variant="bordered"
+              onPress={handleFindGamesClick}
+            >
+              {session ? 'Find Games' : 'Sign In'}
             </Button>
           </div>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="grid md:grid-cols-3 gap-6 mt-12">
           <Card>
-            <CardHeader className="flex gap-3">
-              <FaChessKing className="w-8 h-8" />
-              <div className="flex flex-col">
-                <p className="text-md">Trusted Community</p>
-              </div>
-            </CardHeader>
             <CardBody>
-              <p>Join a network of verified players and hosts, ensuring fair and enjoyable games.</p>
+              <h3 className="text-xl font-semibold mb-2">Exclusive Community</h3>
+              <p>Join our invite-only network of verified players</p>
             </CardBody>
           </Card>
           <Card>
-            <CardHeader className="flex gap-3">
-              <FaUserCheck className="w-8 h-8" />
-              <div className="flex flex-col">
-                <p className="text-md">Verified Hosts</p>
-              </div>
-            </CardHeader>
             <CardBody>
-              <p>All game hosts are thoroughly vetted to provide a safe and professional environment.</p>
+              <h3 className="text-xl font-semibold mb-2">Host Games</h3>
+              <p>Create and manage your own poker games</p>
             </CardBody>
           </Card>
           <Card>
-            <CardHeader className="flex gap-3">
-              <FaShieldAlt className="w-8 h-8" />
-              <div className="flex flex-col">
-                <p className="text-md">Secure Payments</p>
-              </div>
-            </CardHeader>
             <CardBody>
-              <p>Enjoy peace of mind with our secure payment system and escrow service.</p>
+              <h3 className="text-xl font-semibold mb-2">Build Reputation</h3>
+              <p>Earn reputation points and track your progress</p>
             </CardBody>
           </Card>
         </div>

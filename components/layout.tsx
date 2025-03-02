@@ -1,56 +1,60 @@
 import type React from "react"
 import { Navbar, NavbarBrand, NavbarContent, NavbarItem, Link, Button } from "@nextui-org/react"
 import { useSession, signOut } from "next-auth/react"
+import { useRouter } from "next/router"
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession()
+  const router = useRouter()
 
   return (
     <div className="min-h-screen bg-background">
       <Navbar isBordered className="bg-background">
         <NavbarBrand>
-          <Link href="/" className="text-foreground">
-            <p className="font-bold">ChipClub</p>
+          <Link href="/" className="font-bold text-inherit">
+            ChipClub
           </Link>
         </NavbarBrand>
-        <NavbarContent className="hidden sm:flex gap-4" justify="center">
-          {session && (
-            <>
-              <NavbarItem>
-                <Link className="text-foreground" href="/dashboard">
-                  Find Games
-                </Link>
-              </NavbarItem>
-              <NavbarItem>
-                <Link className="text-foreground" href="/dashboard">
-                  My Games
-                </Link>
-              </NavbarItem>
-              <NavbarItem>
-                <Link className="text-foreground" href="/dashboard">
-                  Profile
-                </Link>
-              </NavbarItem>
-            </>
-          )}
-        </NavbarContent>
         <NavbarContent justify="end">
-          {session ? (
+          {!session ? (
             <>
               <NavbarItem>
-                <Button color="danger" variant="flat" onClick={() => signOut()}>
-                  Sign Out
+                <Button 
+                  as={Link} 
+                  href="/login" 
+                  variant="light"
+                >
+                  Login
+                </Button>
+              </NavbarItem>
+              <NavbarItem>
+                <Button 
+                  as={Link} 
+                  href="/signup" 
+                  color="primary"
+                >
+                  Sign Up
                 </Button>
               </NavbarItem>
             </>
           ) : (
             <>
-              <NavbarItem className="hidden lg:flex">
-                <Link href="/login">Login</Link>
+              <NavbarItem>
+                <Button 
+                  as={Link} 
+                  href="/dashboard" 
+                  variant="light"
+                >
+                  Dashboard
+                </Button>
               </NavbarItem>
               <NavbarItem>
-                <Button as={Link} color="primary" href="/signup" variant="flat">
-                  Sign Up
+                <Button 
+                  color="danger" 
+                  variant="flat"
+                  onPress={() => signOut({ callbackUrl: '/' })}
+                >
+                  Sign Out
                 </Button>
               </NavbarItem>
             </>
