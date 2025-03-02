@@ -1,18 +1,77 @@
-import { Input } from "@nextui-org/react"
 import { Layout } from "../../components/layout"
-import { Card, CardBody, CardHeader, Button, Avatar } from "@nextui-org/react"
-import { FaClock, FaComments } from "react-icons/fa"
+import { Card, CardHeader, CardBody, Button, Avatar, Textarea } from "@nextui-org/react"
+import { FaClock } from "react-icons/fa"
+import { useRouter } from "next/router"
+import { useState, useEffect } from "react"
+import { useSession } from "next-auth/react"
 
 export default function GameRoomDetails() {
-  const gameDetails = {
-    id: 1,
-    host: "John Doe",
-    gameType: "Texas Hold'em",
-    buyIn: 100,
-    locality: "Downtown",
-    maxPlayers: 8,
-    registeredPlayers: 5,
-    startTime: "2023-06-15T20:00:00Z",
+  const router = useRouter()
+  const { id } = router.query
+  const { data: session } = useSession()
+  const [gameDetails, setGameDetails] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    // Only fetch when we have an ID from the route
+    if (!id) return
+
+    async function fetchGameDetails() {
+      try {
+        setLoading(true)
+        const response = await fetch(`/api/games/${id}`)
+        
+        if (!response.ok) {
+          throw new Error("Failed to fetch game details")
+        }
+        
+        const data = await response.json()
+        setGameDetails(data)
+      } catch (err) {
+        console.error("Error fetching game details:", err)
+        setError("Could not load game details")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchGameDetails()
+  }, [id])
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-8">
+          <Card>
+            <CardBody>
+              <div className="flex justify-center">
+                <p>Loading game details...</p>
+              </div>
+            </CardBody>
+          </Card>
+        </div>
+      </Layout>
+    )
+  }
+
+  if (error || !gameDetails) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-8">
+          <Card>
+            <CardBody>
+              <div className="flex flex-col items-center">
+                <p className="text-red-500 mb-4">{error || "Game not found"}</p>
+                <Button color="primary" onClick={() => router.push("/dashboard?tab=find-games")}>
+                  Back to Game List
+                </Button>
+              </div>
+            </CardBody>
+          </Card>
+        </div>
+      </Layout>
+    )
   }
 
   return (
@@ -26,44 +85,59 @@ export default function GameRoomDetails() {
             <div className="grid md:grid-cols-2 gap-6">
               <div>
                 <h2 className="text-xl font-semibold mb-4">Game Information</h2>
-                <p>Host: {gameDetails.host}</p>
-                <p>Game Type: {gameDetails.gameType}</p>
+                <p className="text-lg font-semibold">{gameDetails.title}</p>
+                <p className="text-gray-500 mb-2">Hosted by {gameDetails.host?.name || "Unknown Host"}</p>
+                <p>Game Type: {gameDetails.gameType || "Not specified"}</p>
                 <p>Buy-in: ${gameDetails.buyIn}</p>
-                <p>Locality: {gameDetails.locality}</p>
+                <p>Location: {gameDetails.location}</p>
                 <p>
-                  Players: {gameDetails.registeredPlayers}/{gameDetails.maxPlayers}
+                  Players: {gameDetails.players?.length || 0}/{gameDetails.maxPlayers}
                 </p>
                 <div className="flex items-center mt-4">
                   <FaClock className="mr-2" />
                   <p>Starts at: {new Date(gameDetails.startTime).toLocaleString()}</p>
                 </div>
+                {gameDetails.description && (
+                  <div className="mt-4">
+                    <h3 className="font-medium">Description:</h3>
+                    <p className="text-sm">{gameDetails.description}</p>
+                  </div>
+                )}
               </div>
               <div>
                 <h2 className="text-xl font-semibold mb-4">Registered Players</h2>
                 <div className="flex flex-wrap gap-2">
-                  {[...Array(gameDetails.registeredPlayers)].map((_, index) => (
-                    <Avatar key={index} name={`Player ${index + 1}`} />
-                  ))}
+                  {gameDetails.players?.length > 0 ? (
+                    gameDetails.players.map((player, index) => (
+                      <Avatar 
+                        key={player.id || index} 
+                        name={player.name || `Player ${index + 1}`}
+                        src={player.image || undefined}
+                      />
+                    ))
+                  ) : (
+                    <p className="text-gray-500">No players have joined yet</p>
+                  )}
                 </div>
               </div>
             </div>
             <div className="mt-6">
               <h2 className="text-xl font-semibold mb-4">Chat</h2>
               <Card>
-                <CardBody className="h-64 overflow-y-auto">{/* Add chat messages here */}</CardBody>
+                <CardBody>
+                  <div className="h-64 mb-4 bg-gray-100 rounded p-2 overflow-y-auto">
+                    <p className="text-gray-500 text-center">Chat will be available soon</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Textarea 
+                      placeholder="Type a message..." 
+                      className="flex-grow"
+                      disabled
+                    />
+                    <Button color="primary" disabled>Send</Button>
+                  </div>
+                </CardBody>
               </Card>
-              <div className="flex mt-4">
-                <Input placeholder="Type your message..." className="flex-grow mr-2" />
-                <Button color="primary">
-                  <FaComments className="mr-2" />
-                  Send
-                </Button>
-              </div>
-            </div>
-            <div className="mt-6 flex justify-end">
-              <Button color="primary" size="lg">
-                Confirm Seat & Pay
-              </Button>
             </div>
           </CardBody>
         </Card>
