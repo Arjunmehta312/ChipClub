@@ -40,6 +40,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(404).json({ message: "Game not found" })
     }
 
+    // Check if user already joined
+    const existingMembership = await prisma.gamePlayer.findFirst({
+      where: {
+        gameId,
+        playerId: session.user.id
+      }
+    })
+
+    // If already joined, return success with a message
+    if (existingMembership) {
+      return res.status(200).json({ 
+        message: "Already a member of this game",
+        alreadyJoined: true,
+        gameId
+      })
+    }
+
     // Check if already joined
     if (game.gamePlayers.length > 0) {
       return res.status(400).json({ message: "You have already joined this game" })

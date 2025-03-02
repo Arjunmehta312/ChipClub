@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { Card, CardBody, Button, Input } from "@nextui-org/react"
 import { useRouter } from "next/router"
+import { useSession } from "next-auth/react"; // Add this import at the top
 
 interface Game {
   id: string
@@ -14,6 +15,7 @@ interface Game {
 }
 
 export function GameList() {
+  const { data: session } = useSession(); // Add this near the top of your component
   const [games, setGames] = useState<Game[]>([])
   const [joiningGame, setJoiningGame] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -41,46 +43,48 @@ export function GameList() {
 
   const handleJoinGame = async (gameId: string) => {
     try {
-      setJoiningGame(gameId);
-      setError(null);
+      setJoiningGame(gameId)
+      setError(null)
       
-      console.log("Joining game with ID:", gameId);
+      // First, check if the user has already joined this game
+      const checkResponse = await fetch(`/api/games/${gameId}`)
       
-      const response = await fetch("/api/games/join", {
+      if (!checkResponse.ok) {
+        throw new Error("Failed to check game membership")
+      }
+      
+      const gameData = await checkResponse.json()
+      const userHasJoined = gameData.gamePlayers.some(
+        player => player.playerId === session?.user?.id  // Now session is defined
+      )
+      
+      // If already joined, just redirect to game room
+      if (userHasJoined) {
+        router.push(`/game-room/${gameId}`)
+        return
+      }
+      
+      // Otherwise proceed with joining
+      const joinResponse = await fetch("/api/games/join", {
         method: "POST",
         headers: { 
           "Content-Type": "application/json"
         },
         body: JSON.stringify({ gameId })
-      });
+      })
       
-      // First check if the response status is OK before attempting to parse JSON
-      if (!response.ok) {
-        let errorMessage = "Failed to join game";
-        if (response.status === 401) {
-          errorMessage = "Please log in to join games";
-        } else {
-          // Try to get any error message from the response
-          try {
-            const errorData = await response.json();
-            errorMessage = errorData.message || errorMessage;
-          } catch (e) {
-            // If parsing fails, just use the default error message
-            console.error("Error parsing error response:", e);
-          }
-        }
-        throw new Error(errorMessage);
+      if (!joinResponse.ok) {
+        const errorData = await joinResponse.json()
+        throw new Error(errorData.message || "Failed to join game")
       }
       
-      const data = await response.json();
-      
-      // Success! Redirect to game room
-      router.push(`/game-room/${gameId}`);
+      // On successful join, redirect to game room
+      router.push(`/game-room/${gameId}`)
     } catch (error) {
-      console.error("Error joining game:", error);
-      setError(error instanceof Error ? error.message : "Failed to join game");
+      console.error("Error joining game:", error)
+      setError(error instanceof Error ? error.message : "Failed to join game")
     } finally {
-      setJoiningGame(null);
+      setJoiningGame(null)
     }
   }
 
