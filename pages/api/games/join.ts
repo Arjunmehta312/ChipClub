@@ -16,67 +16,70 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const { gameId } = req.body
+    console.log("Received gameId:", gameId)
 
     if (!gameId) {
       return res.status(400).json({ message: "Game ID is required" })
     }
 
-    // Transaction to ensure atomicity
-    const result = await prisma.$transaction(async (tx) => {
-      const game = await tx.game.findUnique({
-        where: { id: gameId },
-        include: {
-          players: true,
-          gamePlayers: {
-            where: { playerId: session.user.id }
+    // Check if the game exists
+    const game = await prisma.game.findUnique({
+      where: { id: gameId },
+      include: {
+        host: true,
+        players: true,
+        gamePlayers: {
+          where: {
+            playerId: session.user.id
           }
-        },
-      })
-
-      if (!game) {
-        throw new Error("Game not found")
-      }
-
-      if (game.status !== "SCHEDULED") {
-        throw new Error("Game is not accepting players")
-      }
-
-      if (game.players.length >= game.maxPlayers) {
-        throw new Error("Game is full")
-      }
-
-      if (game.gamePlayers.length > 0) {
-        throw new Error("Already joined this game")
-      }
-
-      const gamePlayer = await tx.gamePlayer.create({
-        data: {
-          gameId,
-          playerId: session.user.id,
-          status: "PENDING"
         }
-      })
-
-      const updatedGame = await tx.game.update({
-        where: { id: gameId },
-        data: {
-          players: {
-            connect: { id: session.user.id },
-          },
-        },
-        include: { 
-          players: true,
-          gamePlayers: true
-        },
-      })
-
-      return { game: updatedGame, gamePlayer }
+      }
     })
 
-    return res.status(200).json(result)
+    if (!game) {
+      return res.status(404).json({ message: "Game not found" })
+    }
+
+    // Check if already joined
+    if (game.gamePlayers.length > 0) {
+      return res.status(400).json({ message: "You have already joined this game" })
+    }
+
+    // Check if game is full
+    if (game.players.length >= game.maxPlayers) {
+      return res.status(400).json({ message: "This game is already full" })
+    }
+
+    // Add player to the game
+    await prisma.gamePlayer.create({
+      data: {
+        gameId,
+        playerId: session.user.id,
+        status: "PENDING",
+      }
+    })
+
+    // Update the game's players list
+    const updatedGame = await prisma.game.update({
+      where: { id: gameId },
+      data: {
+        players: {
+          connect: { id: session.user.id }
+        }
+      },
+      include: {
+        host: true,
+        players: true
+      }
+    })
+
+    return res.status(200).json({ 
+      success: true, 
+      game: updatedGame 
+    })
   } catch (error) {
-    console.error("Join game error:", error)
-    return res.status(400).json({ 
+    console.error("Error joining game:", error)
+    return res.status(500).json({ 
       message: error instanceof Error ? error.message : "Failed to join game" 
     })
   }

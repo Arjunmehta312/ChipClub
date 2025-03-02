@@ -41,30 +41,46 @@ export function GameList() {
 
   const handleJoinGame = async (gameId: string) => {
     try {
-      setJoiningGame(gameId)
-      setError(null)
-
+      setJoiningGame(gameId);
+      setError(null);
+      
+      console.log("Joining game with ID:", gameId);
+      
       const response = await fetch("/api/games/join", {
         method: "POST",
         headers: { 
-          "Content-Type": "application/json",
+          "Content-Type": "application/json"
         },
-        body: JSON.stringify({ gameId }),
-      })
-
-      const data = await response.json()
-
+        body: JSON.stringify({ gameId })
+      });
+      
+      // First check if the response status is OK before attempting to parse JSON
       if (!response.ok) {
-        throw new Error(data.message || "Failed to join game")
+        let errorMessage = "Failed to join game";
+        if (response.status === 401) {
+          errorMessage = "Please log in to join games";
+        } else {
+          // Try to get any error message from the response
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.message || errorMessage;
+          } catch (e) {
+            // If parsing fails, just use the default error message
+            console.error("Error parsing error response:", e);
+          }
+        }
+        throw new Error(errorMessage);
       }
-
-      // On successful join, redirect to game room
-      router.push(`/game-room/${gameId}`)
+      
+      const data = await response.json();
+      
+      // Success! Redirect to game room
+      router.push(`/game-room/${gameId}`);
     } catch (error) {
-      setError(error instanceof Error ? error.message : "Failed to join game")
-      console.error("Error joining game:", error)
+      console.error("Error joining game:", error);
+      setError(error instanceof Error ? error.message : "Failed to join game");
     } finally {
-      setJoiningGame(null)
+      setJoiningGame(null);
     }
   }
 
