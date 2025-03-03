@@ -16,6 +16,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </Link>
         </NavbarBrand>
         <NavbarContent justify="end">
+          <NavbarItem>
+            <Button as={Link} href="/about" variant="light">
+              About
+            </Button>
+          </NavbarItem>
           {!session ? (
             <>
               <NavbarItem>

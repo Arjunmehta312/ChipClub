@@ -2,6 +2,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/router'
 import { Layout } from "../components/layout"
 import { Button, Card, CardBody } from "@nextui-org/react"
+import { FaGithub } from "react-icons/fa"
 
 export default function Home() {
   const { data: session } = useSession()
@@ -70,6 +71,20 @@ export default function Home() {
               <p>Earn reputation points and track your progress</p>
             </CardBody>
           </Card>
+        </div>
+
+        <div className="fixed bottom-4 left-4 text-gray-600 text-sm">
+          <div className="flex items-center gap-2">
+            <span>Developed by Arjun</span>
+            <a
+              href="https://github.com/Arjunmehta312"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gray-600 hover:text-gray-800"
+            >
+              <FaGithub size={20} />
+            </a>
+          </div>
         </div>
       </div>
     </Layout>
