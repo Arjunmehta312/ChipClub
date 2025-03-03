@@ -1,5 +1,4 @@
 import NextAuth, { NextAuthOptions } from "next-auth"
-import GoogleProvider from "next-auth/providers/google"
 import CredentialsProvider from "next-auth/providers/credentials"
 import { PrismaAdapter } from "@next-auth/prisma-adapter"
 import { prisma } from "@/lib/prisma"
@@ -52,10 +51,6 @@ export const authOptions: NextAuthOptions = {
         }
       }
     }),
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
   ],
   adapter: PrismaAdapter(prisma),
   session: {
@@ -63,20 +58,16 @@ export const authOptions: NextAuthOptions = {
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   pages: {
-    signIn: '/pre-login',
-    error: '/pre-login',
+    signIn: '/login',
+    error: '/login',
   },
   callbacks: {
-    async jwt({ token, user, account }) {
+    async jwt({ token, user }) {
       if (user) {
         token.id = user.id
         token.email = user.email
         token.name = user.name
         token.picture = user.image
-      }
-      if (account?.provider === 'google') {
-        token.provider = 'google'
-        token.access_token = account.access_token
       }
       return token
     },
@@ -88,44 +79,8 @@ export const authOptions: NextAuthOptions = {
         session.user.image = token.picture as string
       }
       return session
-    },
-    async signIn({ user, account }) {
-      if (account?.provider === "credentials") {
-        return true
-      }
-
-      if (account?.provider === "google") {
-        try {
-          const existingUser = await prisma.user.findUnique({
-            where: { email: user.email! },
-          })
-
-          if (existingUser) {
-            return true
-          }
-
-          // For new users, redirect to our callback
-          return '/api/auth/google-callback'
-        } catch (error) {
-          console.error("Error in signIn callback:", error)
-          return false
-        }
-      }
-
-      return false
-    },
-    async redirect({ url, baseUrl }) {
-      // Always allow redirects to our custom callback
-      if (url.startsWith('/api/auth/google-callback')) {
-        return `${baseUrl}${url}`
-      }
-      // Allow redirects to the same host
-      if (url.startsWith(baseUrl)) {
-        return url
-      }
-      return baseUrl
     }
   }
 }
 
-export default NextAuth(authOptions) 
+export default NextAuth(authOptions)

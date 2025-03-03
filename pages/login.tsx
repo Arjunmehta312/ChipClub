@@ -1,18 +1,22 @@
 import { Layout } from "../components/layout"
 import { Button, Input, Card, CardBody, CardHeader } from "@nextui-org/react"
-import { FaGoogle } from "react-icons/fa"
 import { signIn } from "next-auth/react"
 import { useState } from "react"
 import { useRouter } from "next/router"
+import Link from "next/link"
 
 export default function Login() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
+  const [loading, setLoading] = useState(false)
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setLoading(true)
+    setError("")
+    
     try {
       const result = await signIn("credentials", {
         email,
@@ -21,12 +25,14 @@ export default function Login() {
       })
 
       if (result?.error) {
-        setError("Invalid credentials")
+        setError("Invalid email or password")
       } else {
         router.push("/dashboard")
       }
     } catch (error) {
-      setError("An error occurred")
+      setError("An error occurred during login")
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -47,6 +53,7 @@ export default function Login() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                required
               />
               <Input
                 label="Password"
@@ -54,27 +61,25 @@ export default function Login() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                required
               />
-              <Button type="submit" color="primary">
-                Login
-              </Button>
-              <div className="relative flex py-5 items-center">
-                <div className="flex-grow border-t border-gray-400"></div>
-                <span className="flex-shrink mx-4 text-gray-400">Or</span>
-                <div className="flex-grow border-t border-gray-400"></div>
-              </div>
-              <Button
-                startContent={<FaGoogle />}
-                color="secondary"
-                variant="flat"
-                onClick={() => signIn("google")}
+              <Button 
+                type="submit" 
+                color="primary"
+                disabled={loading}
               >
-                Sign in with Google
+                {loading ? "Logging in..." : "Login"}
               </Button>
+              
+              <div className="text-center mt-4">
+                <Link href="/signup" className="text-sm text-indigo-600 hover:text-indigo-500">
+                  Don't have an account? Sign up
+                </Link>
+              </div>
             </form>
           </CardBody>
         </Card>
       </div>
     </Layout>
   )
-} 
+}
